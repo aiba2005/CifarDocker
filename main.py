@@ -18,33 +18,52 @@ classes = ['airplane',
  'ship',
  'truck']
 
-class CifarClassifaction(nn.Module):
-  def __init__(self):
-    super().__init__()
-    self.first = nn.Sequential(
-        nn.Conv2d(3, 32, kernel_size=3, padding=1),#32x32
-        nn.ReLU(),
-        nn.MaxPool2d(2),
+class ChecCifarVgg(nn.Module):
+    def __init__(self):
+        super().__init__()
+        def conv_block(in_f, out_f):
+            return nn.Sequential(
+                nn.Conv2d(in_f, out_f, kernel_size=3, padding=1),
+                nn.BatchNorm2d(out_f),
+                nn.ReLU(inplace=True)
+            )
 
-        nn.Conv2d(32, 64, kernel_size=3, padding=1),#16x16
-        nn.ReLU(),
-        nn.MaxPool2d(2),
+        self.features = nn.Sequential(
+            conv_block(3, 64), conv_block(64, 64),
+            nn.MaxPool2d(2, 2),
 
-        nn.Conv2d(64, 128, kernel_size=3, padding=1),#8x8
-        nn.ReLU(),
-        nn.MaxPool2d(2),
-    )
-    self.second = nn.Sequential(
-        nn.Flatten(),#4x4
-        nn.Linear(128 * 4 * 4, 256),
-        nn.ReLU(),
-        nn.Linear(256, 10)
-    )
+            conv_block(64, 128), conv_block(128, 128),
+            nn.MaxPool2d(2, 2),
 
-  def forward(self, image):
-    image = self.first(image)
-    image = self.second(image)
-    return image
+            conv_block(128, 256), conv_block(256, 256),
+            conv_block(256, 256), conv_block(256, 256),
+            nn.MaxPool2d(2, 2),
+
+            conv_block(256, 512), conv_block(512, 512),
+            conv_block(512, 512), conv_block(512, 512),
+            nn.MaxPool2d(2, 2),
+
+            conv_block(512, 512), conv_block(512, 512),
+            conv_block(512, 512), conv_block(512, 512),
+            nn.MaxPool2d(2, 2),
+        )
+
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(512 * 1 * 1, 512),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(512, 512),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5),
+            nn.Linear(512, 10)
+        )
+
+
+    def forward(self, x):
+        x = self.features(x)
+        x = self.classifier(x)
+        return x
 
 transform = transforms.Compose([
     transforms.Grayscale(num_output_channels=3),
@@ -53,8 +72,8 @@ transform = transforms.Compose([
 ])
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model = CifarClassifaction()
-model.load_state_dict(torch.load('model.pth', map_location=device))
+model = ChecCifarVgg()
+model.load_state_dict(torch.load('model_mc.pth', map_location=device))
 model.to(device)
 model.eval()
 

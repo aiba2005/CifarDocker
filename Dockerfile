@@ -19,7 +19,7 @@ COPY req.txt .
 RUN pip install --no-cache-dir -r req.txt
 
 COPY main.py .
-COPY model.pth .
+COPY model_mc.pth .
 
 EXPOSE 8000
 
